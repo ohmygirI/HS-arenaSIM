@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>투기장 시뮬레이터 2025</title>
+<style>
+  body { background-color: #f8f8f8; text-align: center; font-family: 'Gmarket Sans', sans-serif; transition: background-color 0.5s ease; margin: 0; padding: 20px; }
+  .title { font-size: 40px; margin-top: 30px; font-weight: bold; }
+  
+  .btn { border: 3px solid #d32f2f; border-radius: 20px; display: inline-block; padding: 8px 20px; color: #d32f2f; font-size: 18px; margin: 10px; cursor: pointer; transition: 0.2s; background: white; user-select: none; }
+  .btn:hover { background-color: #d32f2f; color: white; }
+  .btn.active { background-color: #d32f2f; color: white; }
+  .dev-entry-btn { border-color: #333; color: #333; }
+  .dev-entry-btn:hover { background-color: #333; color: white; }
+
+  /* 팩 선택 화면 */
+  .pack-filter-container { margin: 20px auto; max-width: 800px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .pack-select-dropdown { padding: 15px; font-size: 18px; width: 100%; border-radius: 10px; border: 2px solid #555; background: white; cursor: pointer; }
+  .legacy-toggle-area { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
+  .toggle-btn { border: 2px solid #555; padding: 8px 15px; border-radius: 20px; cursor: pointer; background: #eee; color: #aaa; font-weight: bold; }
+  .toggle-btn.checked { background: #4CAF50; color: white; border-color: #4CAF50; }
+
+  .selected-packs-area { min-height: 60px; margin: 20px auto; max-width: 1000px; padding: 10px; border: 2px dashed #d32f2f; border-radius: 10px; background: #fff5f5; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; align-items: center; }
+  .selected-packs-label { width: 100%; font-size: 14px; color: #d32f2f; margin-bottom: 5px; font-weight: bold; }
+  
+  .packs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; justify-content: center; max-width: 1200px; margin: 20px auto; }
+  .pack-card { border: 2px solid #555; padding: 15px; cursor: pointer; background-color: white; border-radius: 10px; transition: 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80px; word-break: keep-all; line-height: 1.3; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  .pack-card:hover { transform: translateY(-3px); box-shadow: 0 5px 10px rgba(0,0,0,0.15); }
+  .pack-card.selected { background-color: #fff9c4; border-color: #fbc02d; font-weight: bold; box-shadow: 0 0 0 2px #fbc02d; }
+  .pack-year-tag { font-size: 12px; color: #888; margin-bottom: 5px; }
+  .pack-name { font-size: 15px; font-weight: bold; }
+
+  /* 공통 레이아웃 */
+  .layout { display: flex; justify-content: center; align-items: flex-start; gap: 30px; margin-top: 30px; flex-wrap: wrap; }
+  .heroes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; justify-content: center; max-width: 1000px; margin: 30px auto; }
+  .card-container { display: flex; gap: 20px; justify-content: center; }
+  .card-wrapper { display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; }
+  .card-wrapper:hover { transform: scale(1.05); }
+  .hero-img { width: 150px; height: 220px; cursor: pointer; background-size: cover; background-position: center; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+  .card { width: 200px; height: 300px; cursor: pointer; background-size: contain; background-repeat: no-repeat; background-position: center; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); }
+  .deck { border: 2px solid #333; width: 250px; height: 600px; overflow-y: auto; padding: 15px; text-align: left; background: white; border-radius: 10px; }
+  .deck-item { display: flex; align-items: center; background-color: #222; color: white; padding: 6px; margin: 4px 0; border-radius: 4px; font-size: 14px; }
+  .mana-cost { background-color: #0070DE; color: white; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; margin-right: 8px; font-weight: bold; font-size: 12px; }
+  
+  .rune-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; background: #333; padding: 10px 20px; border-radius: 20px; display: inline-flex; }
+  .rune-slot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #555; background-color: #222; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .rune-blood { background-color: #C41E3A; border-color: #ff4d4d; box-shadow: 0 0 10px #C41E3A; }
+  .rune-frost { background-color: #0070DE; border-color: #4da6ff; box-shadow: 0 0 10px #0070DE; }
+  .rune-unholy { background-color: #40C040; border-color: #80ff80; box-shadow: 0 0 10px #40C040; }
+  .rune-empty { background-color: #444; }
+
+  /* 마나 커브 UI */
+  .mana-curve-container { position: absolute; top: 20px; right: 20px; background: white; padding: 10px; border: 2px solid #333; border-radius: 10px; width: 200px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+  .mana-curve-title { font-weight: bold; font-size: 14px; margin-bottom: 5px; text-align: center; }
+  .mana-graph { display: flex; justify-content: space-around; align-items: flex-end; height: 100px; border-bottom: 1px solid #ccc; }
+  .mana-bar-group { display: flex; flex-direction: column; align-items: center; width: 20px; }
+  .mana-bar { width: 100%; background-color: #0070DE; border-radius: 3px 3px 0 0; transition: height 0.3s; min-height: 0; }
+  .mana-label { font-size: 10px; margin-top: 2px; }
+  .mana-count { font-size: 10px; margin-bottom: 2px; font-weight: bold; }
+
+  /* 개발자 페이지 */
+  .dev-header { display: flex; justify-content: space-between; align-items: flex-start; max-width: 1200px; margin: 0 auto 20px auto; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); flex-wrap: wrap; gap: 20px; }
+  .dev-search-area { text-align: left; flex: 1; min-width: 300px; }
+  .dev-search-input { width: 100%; padding: 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+  
+  .dev-filter-area { text-align: right; flex: 2; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .filter-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; justify-content: flex-end; width: 100%; }
+  .filter-btn { border: 1px solid #ccc; background: white; padding: 6px 12px; cursor: pointer; border-radius: 15px; font-size: 12px; color: #555; transition: 0.2s; margin: 2px; }
+  .filter-btn:hover { background-color: #f0f0f0; }
+  .filter-btn.active { background-color: #333; color: white; border-color: #333; font-weight: bold; }
+  
+  .dev-layout { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px 10px; padding: 20px; }
+  .dev-card-box { display: flex; flex-direction: column; align-items: center; position: relative; }
+  .dev-card-img { width: 150px; height: 225px; background-size: contain; background-repeat: no-repeat; background-position: center; }
+  .ban-checkbox { width: 10px; height: 10px; border: 1px solid black; background-color: white; margin-top: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .ban-checkbox.checked { background-color: red; }
+  .ban-inner { width: 5px; height: 5px; background-color: transparent; }
+  .ban-checkbox.checked .ban-inner { background-color: red; }
+  .banned-overlay { position: absolute; top:0; left:0; width: 100%; height: 225px; background-color: rgba(255, 0, 0, 0.3); pointer-events: none; display: none; }
+  .ban-checkbox.checked ~ .banned-overlay { display: block; }
+  .loading { font-size: 24px; font-weight: bold; color: #555; margin-top: 50px; }
+
+  /* 음악 버튼 */
+  .music-control { 
+      position: fixed; bottom: 20px; right: 20px; 
+      width: 50px; height: 50px; 
+      background: white; border: 3px solid #333; border-radius: 50%; 
+      display: flex; align-items: center; justify-content: center; 
+      font-size: 24px; cursor: pointer; z-index: 1000; 
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2); transition: 0.2s;
+  }
+  .music-control:hover { transform: scale(1.1); }
+  .music-control.off { background: #ddd; color: #777; border-color: #777; }
+
+</style>
+</head>
+<body>
+
+<div id="content"></div>
+
+<script>
+const content = document.getElementById('content');
+
+// --- 오디오 설정 ---
+const audioMain = new Audio('Hearthstone Main.mp3');
+const audioBrawl = new Audio('Hearthstone Tavern Brawl Main.mp3');
+audioMain.loop = true;
+audioBrawl.loop = true;
+audioMain.volume = 0.4;
+audioBrawl.volume = 0.4;
+
+let currentAudio = null;
+let isMuted = false;
+
+function playMusic(audioObj) {
+    if (currentAudio === audioObj && !currentAudio.paused) return; 
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+    }
+    currentAudio = audioObj;
+    if (!isMuted) {
+        currentAudio.play().catch(e => console.log("Audio play failed:", e));
+    }
+}
+
+function stopMusic() {
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        currentAudio = null;
+    }
+}
+
+function toggleMute() {
+    isMuted = !isMuted;
+    const btn = document.getElementById('musicBtn');
+    if (isMuted) {
+        if (currentAudio) currentAudio.pause();
+        if (btn) { btn.innerHTML = '🔇'; btn.classList.add('off'); }
+    } else {
+        if (currentAudio) currentAudio.play();
+        if (btn) { btn.innerHTML = '🔊'; btn.classList.remove('off'); }
+    }
+}
+
+function renderMusicBtn() {
+    if (document.getElementById('musicBtn')) return;
+    const btn = document.createElement('div');
+    btn.id = 'musicBtn';
+    btn.className = 'music-control';
+    btn.innerHTML = isMuted ? '🔇' : '🔊';
+    if (isMuted) btn.classList.add('off');
+    btn.onclick = toggleMute;
+    document.body.appendChild(btn);
+}
+
+// ----------------------------------------------------
+
+let allCardsData = null;
+let bannedCardIds = new Set(); 
+
+// 옵션 상태
+let includeCore = true;    
+let includeLegacy = false;
+let includeVanilla = false;
+
+// 개발자 페이지 필터 상태
+let devState = {
+    search: '',
+    filters: {
+        classType: new Set(),
+        cardType: new Set(),
+        rarity: new Set(),
+        sets: new Set()
+    }
+};
+
+const hearthstoneYears = [
+    {
+        year: 2025, name: "랩터의 해",
+        sets: [
+            { id: 'TIME_TRAVEL', name: '시간의 길 너머로' }, 
+            { id: 'EMERALD_DREAM', name: '에메랄드의 꿈 속으로' }, 
+            { id: 'THE_LOST_CITY', name: '운고로의 잃어버린 도시' } 
+        ]
+    },
+    {
+        year: 2024, name: "페가수스의 해",
+        sets: [
+            { id: 'SPACE', name: '끝없는 어둠' },
+            { id: 'ISLAND_VACATION', name: '극한의 극락' },
+            { id: 'WHIZBANGS_WORKSHOP', name: '위즈뱅의 장난감 공방' }
+        ]
+    },
+    { year: 2023, name: "늑대의 해", sets: [{ id: 'WILD_WEST', name: '황야의 땅 결투' }, { id: 'TITANS', name: '티탄' }, { id: 'BATTLE_OF_THE_BANDS', name: '전설 노래자랑' }] },
+    { year: 2022, name: "히드라의 해", sets: [{ id: 'RETURN_OF_THE_LICH_KING', name: '리치왕의 진군' }, { id: 'REVENDRETH', name: '나스리아 성채 살인 사건' }, { id: 'THE_SUNKEN_CITY', name: '가라앉은 도시로의 항해' }] },
+    { year: 2021, name: "그리폰의 해", sets: [{ id: 'ALTERAC_VALLEY', name: '알터렉 계곡' }, { id: 'STORMWIND', name: '스톰윈드' }, { id: 'THE_BARRENS', name: '불모의 땅' }] },
+    { year: 2020, name: "불사조의 해", sets: [{ id: 'DARKMOON_FAIRE', name: '광기의 다크문 축제' }, { id: 'SCHOLOMANCE', name: '스칼로맨스 아카데미' }, { id: 'BLACK_TEMPLE', name: '황폐한 아웃랜드' }] },
+    { year: 2019, name: "용의 해", sets: [{ id: 'DRAGONS', name: '용의 강림' }, { id: 'ULDUM', name: '울둠의 구원자' }, { id: 'DALARAN', name: '어둠의 반격' }] },
+    { year: 2018, name: "까마귀의 해", sets: [{ id: 'TROLL', name: '라스타칸의 대난투' }, { id: 'BOOMSDAY', name: '박사 붐의 폭심만만 프로젝트' }, { id: 'GILNEAS', name: '마녀숲' }] },
+    { year: 2017, name: "매머드의 해", sets: [{ id: 'LOOTAPALOOZA', name: '코볼트와 지하 미궁' }, { id: 'ICECROWN', name: '얼어붙은 왕좌의 기사들' }, { id: 'UNGORO', name: '운고로를 향한 여정' }] },
+    { year: 2016, name: "크라켄의 해", sets: [{ id: 'GANGS', name: '비열한 거리의 가젯잔' }, { id: 'KARA', name: '한여름 밤의 카라잔' }, { id: 'OG', name: '고대 신의 속삭임' }] },
+    { year: 2015, name: "2015년", sets: [{ id: 'LOE', name: '탐험가 연맹' }, { id: 'TGT', name: '대 마상시합' }, { id: 'BRM', name: '검은바위 산' }] },
+    { year: 2014, name: "2014년", sets: [{ id: 'GVG', name: '고블린 대 노움' }, { id: 'NAXX', name: '낙스라마스의 저주' }] }
+];
+
+const flatPackList = [];
+hearthstoneYears.forEach(y => { y.sets.forEach(s => { flatPackList.push({ ...s, year: y.year, yearName: y.name }); }); });
+
+let selectedPackIDs = []; 
+let selectedHero = '';
+let deck = [];
+
+const heroes = ['성기사','전사','악마 사냥꾼','도적','사제','드루이드','흑마법사','마법사','죽음의 기사','주술사','사냥꾼'];
+
+// 덱 코드 생성을 위한 DBF ID 매핑
+const heroDbfIdMap = {
+  '성기사': 671,
+  '전사': 7,
+  '악마 사냥꾼': 56550,
+  '도적': 930,
+  '사제': 813,
+  '드루이드': 274,
+  '흑마법사': 893,
+  '마법사': 637,
+  '죽음의 기사': 78065,
+  '주술사': 1066,
+  '사냥꾼': 31
+};
+
+const heroImageMap = {
+  '성기사': 'HERO_04', '전사': 'HERO_01', '악마 사냥꾼': 'HERO_10', '도적': 'HERO_03', '사제': 'HERO_09',
+  '드루이드': 'HERO_06', '흑마법사': 'HERO_07', '마법사': 'HERO_08', '죽음의 기사': 'HERO_11', '주술사': 'HERO_02', '사냥꾼': 'HERO_05'
+};
+
+const heroClassMap = {
+  '성기사': 'PALADIN', '전사': 'WARRIOR', '악마 사냥꾼': 'DEMONHUNTER', '도적': 'ROGUE', '사제': 'PRIEST',
+  '드루이드': 'DRUID', '흑마법사': 'WARLOCK', '마법사': 'MAGE', '죽음의 기사': 'DEATHKNIGHT', '주술사': 'SHAMAN', '사냥꾼': 'HUNTER'
+};
+
+const rarityColorMap = { 'FREE': '#777', 'COMMON': '#777', 'RARE': '#0070dd', 'EPIC': '#a335ee', 'LEGENDARY': '#ff8000' };
+
+async function loadCardData() {
+    if (allCardsData) return;
+    content.innerHTML = `<div class='loading'>카드 데이터 불러오는 중...<br>(초기 1회 로딩이 필요합니다)</div>`;
+    try {
+        const res = await fetch('https://api.hearthstonejson.com/v1/latest/koKR/cards.collectible.json');
+        allCardsData = await res.json();
+        mainScreen();
+    } catch (e) {
+        content.innerHTML = `<div class='title'>데이터 로드 실패</div><p>새로고침 해주세요.</p>`;
+    }
+}
+
+function mainScreen() {
+  selectedPackIDs = []; 
+  deck = []; 
+  bannedCardIds.clear(); 
+  
+  includeCore = true;
+  includeLegacy = false;
+  includeVanilla = false;
+  
+  renderMusicBtn();
+  stopMusic();
+
+  content.innerHTML = `<div class='title'>투기장 시뮬레이터 2025</div><div class='btn' onclick='startApp()'>시작하기</div>`;
+}
+
+function startApp() {
+    playMusic(audioMain); 
+    selectPacks();
+}
+
+function selectPacks() {
+  content.innerHTML = `
+      <div class='title'>확장팩 선택 (최대 6개)</div>
+      <div class='pack-filter-container'>
+          <select id='yearFilter' class='pack-select-dropdown' onchange='renderPackGrid()'>
+              <option value='ALL'>전체 보기</option>
+              ${hearthstoneYears.map(y => {
+                  const setNames = y.sets.map(s => s.name).join(', ');
+                  return `<option value='${y.year}'>${y.year}년 - ${y.name} - ${setNames}</option>`;
+              }).join('')}
+          </select>
+          
+          <div class='legacy-toggle-area'>
+             <div class='toggle-btn ${includeCore ? 'checked' : ''}' onclick='toggleCore(this)'>핵심 (CORE)</div>
+             <div class='toggle-btn ${includeLegacy ? 'checked' : ''}' onclick='toggleLegacy(this)'>고전 (LEGACY)</div>
+             <div class='toggle-btn ${includeVanilla ? 'checked' : ''}' onclick='toggleVanilla(this)'>기본 (VANILLA)</div>
+          </div>
+      </div>
+      <div class='selected-packs-area' id='selectedArea'></div>
+      <div class='packs-grid' id='packGrid'></div>
+      <div class='layout'><div class='btn' onclick='mainScreen()'>처음으로</div><div class='btn' onclick='selectHeroes()'>영웅 선택</div></div>
+  `;
+  renderPackGrid();
+  renderSelectedPacks();
+}
+
+function toggleCore(btn) { includeCore = !includeCore; btn.classList.toggle('checked'); }
+function toggleLegacy(btn) { includeLegacy = !includeLegacy; btn.classList.toggle('checked'); }
+function toggleVanilla(btn) { includeVanilla = !includeVanilla; btn.classList.toggle('checked'); }
+
+function renderPackGrid() {
+    const filterValue = document.getElementById('yearFilter').value;
+    const grid = document.getElementById('packGrid');
+    grid.innerHTML = '';
+    let displayPacks = (filterValue === 'ALL') ? flatPackList : flatPackList.filter(p => p.year === parseInt(filterValue));
+    displayPacks.forEach(pack => {
+        const div = document.createElement('div');
+        div.className = 'pack-card';
+        if (selectedPackIDs.includes(pack.id)) div.classList.add('selected');
+        div.innerHTML = `<div class='pack-year-tag'>${pack.year} ${pack.yearName}</div><div class='pack-name'>${pack.name}</div>`;
+        div.onclick = () => togglePackSelection(pack.id);
+        grid.appendChild(div);
+    });
+}
+
+function togglePackSelection(id) {
+    if (selectedPackIDs.includes(id)) selectedPackIDs = selectedPackIDs.filter(pid => pid !== id);
+    else if (selectedPackIDs.length < 6) selectedPackIDs.push(id);
+    else { alert('최대 6개까지 선택 가능합니다.'); return; }
+    renderPackGrid(); renderSelectedPacks();
+}
+
+function renderSelectedPacks() {
+    const area = document.getElementById('selectedArea');
+    const count = selectedPackIDs.length;
+    const selectedObjects = selectedPackIDs.map(id => flatPackList.find(p => p.id === id));
+    let html = `<div class='selected-packs-label'>선택된 확장팩 (${count}/6)</div>`;
+    if (count === 0) html += `<span style='color:#999; font-size:14px;'>확장팩을 선택하세요.</span>`;
+    else selectedObjects.forEach(pack => { html += `<div class='btn' style='font-size:14px; padding:5px 10px; margin:2px; pointer-events:none; border-width:1px;'>${pack.name}</div>`; });
+    area.innerHTML = html;
+}
+
+function selectHeroes() {
+  const randomHeroes = heroes.sort(() => 0.5 - Math.random()).slice(0,3);
+  content.innerHTML = `<div class='title'>영웅 선택</div><div class='heroes' id='heroes' style='margin-top:20px;'></div><div style='margin-top:30px;'><div class='btn' onclick='selectPacks()'>뒤로가기</div></div>`;
+  const heroDiv = document.getElementById('heroes');
+  randomHeroes.forEach(hero => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'card-wrapper';
+    const div = document.createElement('div');
+    div.className = 'hero-img';
+    div.style.backgroundImage = `url('https://art.hearthstonejson.com/v1/render/latest/koKR/512x/${heroImageMap[hero]}.png')`;
+    div.onclick = () => { 
+        selectedHero = hero; 
+        deck = []; 
+        playMusic(audioBrawl); 
+        selectCards(true); 
+    };
+    const text = document.createElement('div'); text.innerText = hero; text.style.marginTop = '10px'; text.style.fontWeight = 'bold';
+    wrapper.appendChild(div); wrapper.appendChild(text); heroDiv.appendChild(wrapper);
+  });
+}
+
+function updateDeck() {
+  const deckDiv = document.getElementById('deck'); if(!deckDiv) return;
+  const cardCount = {};
+  deck.forEach(card => {
+    const key = `${card.name}-${card.cost}`;
+    if (!cardCount[key]) cardCount[key] = { ...card, count: 0 };
+    cardCount[key].count++;
+  });
+  const sortedCards = Object.values(cardCount).sort((a, b) => a.cost - b.cost);
+  deckDiv.innerHTML = `<div style='margin-bottom: 10px; font-weight: bold; border-bottom: 2px solid #eee; padding-bottom: 5px;'>덱 리스트 (${deck.length}/30)</div>` + 
+  sortedCards.map(card => {
+    const rarityColor = rarityColorMap[card.rarity] || '#777';
+    return `<div class='deck-item' style='border-left: 5px solid ${rarityColor};'><div class='mana-cost'>${card.cost}</div><div style='flex:1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>${card.name}</div>${card.count > 1 ? `<div style='font-weight:bold; color:gold; margin-left:5px;'>x${card.count}</div>` : ''}</div>`;
+  }).join('');
+}
+
+function renderManaCurve() {
+    const counts = [0,0,0,0,0,0,0,0]; // 0~7+
+    deck.forEach(c => {
+        let cost = c.cost || 0;
+        if(cost > 7) cost = 7;
+        counts[cost]++;
+    });
+    const max = Math.max(...counts, 1);
+    
+    let html = `<div class='mana-curve-container'><div class='mana-curve-title'>마나 커브</div><div class='mana-graph'>`;
+    counts.forEach((count, idx) => {
+        const height = (count / max) * 80; 
+        const label = idx === 7 ? '7+' : idx;
+        html += `
+            <div class='mana-bar-group'>
+                <div class='mana-count'>${count > 0 ? count : ''}</div>
+                <div class='mana-bar' style='height:${height}px;'></div>
+                <div class='mana-label'>${label}</div>
+            </div>`;
+    });
+    html += `</div></div>`;
+    return html;
+}
+
+function getCurrentRunes() {
+    let maxBlood = 0, maxFrost = 0, maxUnholy = 0;
+    deck.forEach(c => {
+        maxBlood = Math.max(maxBlood, c.blood || 0);
+        maxFrost = Math.max(maxFrost, c.frost || 0);
+        maxUnholy = Math.max(maxUnholy, c.unholy || 0);
+    });
+    return { blood: maxBlood, frost: maxFrost, unholy: maxUnholy };
+}
+
+/* ------------------------------
+   개발자 모드 & 필터
+   ------------------------------ */
+let baseDevCards = []; 
+
+function authDeveloperMode() {
+    const pw = prompt("관리자 비밀번호를 입력하세요.");
+    if (pw === '0220') initDeveloperPage();
+    else if (pw !== null) alert("비밀번호가 일치하지 않습니다.");
+}
+
+function getActiveSets() {
+    const packs = [];
+    if (includeCore) packs.push('CORE');
+    if (includeLegacy) packs.push('LEGACY');
+    if (includeVanilla) packs.push('VANILLA');
+    
+    selectedPackIDs.forEach(id => {
+        packs.push(id);
+    });
+    return packs;
+}
+
+function initDeveloperPage() {
+    if (!allCardsData || !selectedHero) return;
+    
+    devState = { search: '', filters: { classType: new Set(), cardType: new Set(), rarity: new Set(), sets: new Set() } };
+
+    const heroClass = heroClassMap[selectedHero];
+    const activeSets = getActiveSets();
+
+    baseDevCards = allCardsData.filter(card => {
+        const bannedTypes = ['ENCHANTMENT', 'HERO_POWER'];
+        const bannedIds = ['GDB_905', 'AT_COIN', 'VAC_320']; 
+        if (bannedTypes.includes(card.type)) return false;
+        if (bannedIds.includes(card.id)) return false;
+        if (card.name.trim().toLowerCase() === '???') return false;
+        if (!['MINION', 'SPELL', 'WEAPON', 'HERO', 'LOCATION', 'QUEST'].includes(card.type)) return false;
+        if (!card.set || !activeSets.includes(card.set)) return false;
+
+        if (card.classes && card.classes.length > 0) {
+            const isPureNeutral = card.classes.length === 1 && card.classes[0] === 'NEUTRAL';
+            if (!isPureNeutral && !card.classes.includes(heroClass)) return false;
+        } else {
+            if (card.cardClass !== heroClass && card.cardClass !== 'NEUTRAL') return false;
+        }
+        return true;
+    });
+
+    baseDevCards.sort((a,b) => a.cost - b.cost);
+    renderDevUI();
+    updateDevGrid();
+}
+
+function getSetName(setId) {
+    if (setId === 'CORE') return '핵심';
+    if (setId === 'LEGACY') return '고전';
+    if (setId === 'VANILLA') return '기본';
+    const packObj = flatPackList.find(p => p.id === setId);
+    if (packObj) return packObj.name;
+    return setId;
+}
+
+function renderDevUI() {
+    const hasLocation = baseDevCards.some(c => c.type === 'LOCATION');
+    const activeSets = getActiveSets();
+
+    let setButtons = '';
+    activeSets.forEach(setId => {
+        let name = getSetName(setId);
+        setButtons += `<button class='filter-btn' onclick="toggleFilter('sets', '${setId}')">${name}</button>`;
+    });
+
+    content.innerHTML = `
+        <div class='dev-header'>
+            <div class='dev-search-area'>
+                <div style='font-weight:bold; margin-bottom:5px;'>🔍 카드 검색</div>
+                <input type='text' id='devSearch' class='dev-search-input' placeholder='카드 이름 검색...'>
+            </div>
+            
+            <div class='dev-filter-area'>
+                <div style='font-weight:bold; font-size:14px; margin-bottom:5px; color:#555;'>결과 확인용 필터</div>
+                <div class='filter-row'>
+                    <button class='filter-btn' onclick="toggleFilter('classType', 'CLASS')">직업</button>
+                    <button class='filter-btn' onclick="toggleFilter('classType', 'NEUTRAL')">중립</button>
+                </div>
+                <div class='filter-row'>
+                    <button class='filter-btn' onclick="toggleFilter('cardType', 'MINION')">하수인</button>
+                    <button class='filter-btn' onclick="toggleFilter('cardType', 'SPELL')">주문</button>
+                    <button class='filter-btn' onclick="toggleFilter('cardType', 'WEAPON')">무기</button>
+                    <button class='filter-btn' onclick="toggleFilter('cardType', 'HERO')">영웅</button>
+                    ${hasLocation ? `<button class='filter-btn' onclick="toggleFilter('cardType', 'LOCATION')">장소</button>` : ''}
+                </div>
+                <div class='filter-row'>
+                    <button class='filter-btn' onclick="toggleFilter('rarity', 'COMMON')">일반</button>
+                    <button class='filter-btn' onclick="toggleFilter('rarity', 'RARE')">희귀</button>
+                    <button class='filter-btn' onclick="toggleFilter('rarity', 'EPIC')">특급</button>
+                    <button class='filter-btn' onclick="toggleFilter('rarity', 'LEGENDARY')">전설</button>
+                </div>
+                <div class='filter-row' style='margin-top:5px; border-top:1px dashed #ddd; padding-top:5px;'>
+                    ${setButtons}
+                </div>
+            </div>
+        </div>
+        
+        <div id='devStats' class='dev-stats'></div>
+        <div style='margin-bottom:10px; color:#555;'>체크박스 선택 시 <b>제외(Ban)</b> 및 덱에서 자동 삭제</div>
+        <div class='btn' onclick='returnFromDev()'>완료 및 저장</div>
+        <div class='dev-layout' id='devGrid'></div>
+    `;
+
+    document.getElementById('devSearch').addEventListener('input', (e) => {
+        devState.search = e.target.value.trim();
+        updateDevGrid();
+    });
+}
+
+function toggleFilter(category, value) {
+    if (devState.filters[category].has(value)) devState.filters[category].delete(value);
+    else devState.filters[category].add(value);
+    updateDevGrid();
+    updateFilterButtons();
+}
+
+function updateFilterButtons() {
+    const buttons = document.querySelectorAll('.filter-btn');
+    buttons.forEach(btn => {
+        const text = btn.innerText;
+        let isActive = false;
+        if (devState.filters.classType.has('CLASS') && text === '직업') isActive = true;
+        if (devState.filters.classType.has('NEUTRAL') && text === '중립') isActive = true;
+        if (devState.filters.cardType.has('MINION') && text === '하수인') isActive = true;
+        if (devState.filters.cardType.has('SPELL') && text === '주문') isActive = true;
+        if (devState.filters.cardType.has('WEAPON') && text === '무기') isActive = true;
+        if (devState.filters.cardType.has('HERO') && text === '영웅') isActive = true;
+        if (devState.filters.cardType.has('LOCATION') && text === '장소') isActive = true;
+        if (devState.filters.rarity.has('COMMON') && text === '일반') isActive = true;
+        if (devState.filters.rarity.has('RARE') && text === '희귀') isActive = true;
+        if (devState.filters.rarity.has('EPIC') && text === '특급') isActive = true;
+        if (devState.filters.rarity.has('LEGENDARY') && text === '전설') isActive = true;
+        
+        const onclickAttr = btn.getAttribute('onclick');
+        if (onclickAttr && onclickAttr.includes("toggleFilter('sets'")) {
+            const match = onclickAttr.match(/'sets',\s*'([^']+)'/);
+            if (match && devState.filters.sets.has(match[1])) isActive = true;
+        }
+        if (isActive) btn.classList.add('active'); else btn.classList.remove('active');
+    });
+}
+
+function updateDevGrid() {
+    const grid = document.getElementById('devGrid');
+    const statsDiv = document.getElementById('devStats');
+    grid.innerHTML = '';
+
+    const filtered = baseDevCards.filter(card => {
+        if (devState.search && !card.name.includes(devState.search)) return false;
+        if (devState.filters.classType.size > 0) {
+            const isNeutral = (card.cardClass === 'NEUTRAL' && (!card.classes || card.classes.includes('NEUTRAL')));
+            const isClass = !isNeutral;
+            let match = false;
+            if (devState.filters.classType.has('CLASS') && isClass) match = true;
+            if (devState.filters.classType.has('NEUTRAL') && isNeutral) match = true;
+            if (!match) return false;
+        }
+        if (devState.filters.cardType.size > 0 && !devState.filters.cardType.has(card.type)) return false;
+        if (devState.filters.rarity.size > 0) {
+            let r = card.rarity || 'FREE';
+            if (r === 'FREE') r = 'COMMON';
+            if (!devState.filters.rarity.has(r)) return false;
+        }
+        if (devState.filters.sets.size > 0 && !devState.filters.sets.has(card.set)) return false;
+        return true;
+    });
+
+    let classCount = 0; let neutralCount = 0;
+    filtered.forEach(card => {
+        const isNeutral = (card.cardClass === 'NEUTRAL' && (!card.classes || card.classes.includes('NEUTRAL')));
+        if (isNeutral) neutralCount++; else classCount++;
+    });
+    statsDiv.innerHTML = `표시된 카드: 총 ${filtered.length}장 (직업: ${classCount} / 중립: ${neutralCount})`;
+
+    filtered.forEach(card => {
+        const box = document.createElement('div');
+        box.className = 'dev-card-box';
+        const img = document.createElement('div');
+        img.className = 'dev-card-img';
+        img.style.backgroundImage = `url('https://art.hearthstonejson.com/v1/render/latest/koKR/512x/${card.id}.png')`;
+        img.onerror = function() { this.style.backgroundColor = '#ccc'; };
+        const checkbox = document.createElement('div');
+        checkbox.className = 'ban-checkbox';
+        if (bannedCardIds.has(card.id)) checkbox.classList.add('checked');
+        const inner = document.createElement('div'); inner.className = 'ban-inner'; checkbox.appendChild(inner);
+        const overlay = document.createElement('div'); overlay.className = 'banned-overlay';
+        checkbox.onclick = () => {
+            if (bannedCardIds.has(card.id)) { bannedCardIds.delete(card.id); checkbox.classList.remove('checked'); }
+            else { bannedCardIds.add(card.id); checkbox.classList.add('checked'); }
+        };
+        box.appendChild(img); box.appendChild(checkbox); box.appendChild(overlay); grid.appendChild(box);
+    });
+    updateFilterButtons(); 
+}
+
+function returnFromDev() {
+    const originalLength = deck.length;
+    deck = deck.filter(c => !bannedCardIds.has(c.id));
+    const removedCount = originalLength - deck.length;
+    if (removedCount > 0) alert(`${removedCount}장의 카드가 덱에서 제외되었습니다.\n다시 선택합니다.`);
+    selectCards(false); 
+}
+
+// ------------------------------
+// 메인 로직 (단순화: 1픽 전설, 이후 노전설)
+// ------------------------------
+function selectCards(isFirst) {
+  if (!allCardsData) return;
+  const heroClass = heroClassMap[selectedHero];
+  const activeSets = getActiveSets();
+
+  let availableCards = allCardsData.filter(card => {
+    if (bannedCardIds.has(card.id)) return false;
+    
+    // [중복 제한 추가] 2장 이상이면 제외
+    const currentCount = deck.filter(c => c.id === card.id).length;
+    if (currentCount >= 2) return false;
+
+    const bannedTypes = ['ENCHANTMENT', 'HERO_POWER'];
+    const bannedIds = ['GDB_905', 'AT_COIN', 'VAC_320']; 
+    if (bannedTypes.includes(card.type)) return false;
+    if (bannedIds.includes(card.id)) return false;
+    if (card.name.trim().toLowerCase() === '???') return false;
+    if (!['MINION', 'SPELL', 'WEAPON', 'HERO', 'LOCATION', 'QUEST'].includes(card.type)) return false;
+    if (!card.set || !activeSets.includes(card.set)) return false;
+    
+    if (card.classes && card.classes.length > 0) {
+        const isPureNeutral = card.classes.length === 1 && card.classes[0] === 'NEUTRAL';
+        if (!isPureNeutral && !card.classes.includes(heroClass)) return false;
+    } else {
+        if (card.cardClass !== heroClass && card.cardClass !== 'NEUTRAL') return false;
+    }
+    return true;
+  });
+
+  if (selectedHero === '죽음의 기사') {
+    const current = getCurrentRunes();
+    const maxBlood = current.blood;
+    const maxFrost = current.frost;
+    const maxUnholy = current.unholy;
+    availableCards = availableCards.filter(card => {
+        const runeCost = card.runeCost || { blood: 0, frost: 0, unholy: 0 };
+        const cBlood = runeCost.blood || 0;
+        const cFrost = runeCost.frost || 0;
+        const cUnholy = runeCost.unholy || 0;
+        const newMaxBlood = Math.max(maxBlood, cBlood);
+        const newMaxFrost = Math.max(maxFrost, cFrost);
+        const newMaxUnholy = Math.max(maxUnholy, cUnholy);
+        return (newMaxBlood + newMaxFrost + newMaxUnholy) <= 3;
+    });
+  }
+
+  // --- 전설 규칙 적용 ---
+  if (isFirst) {
+      availableCards = availableCards.filter(c => c.rarity === 'LEGENDARY');
+  } else {
+      availableCards = availableCards.filter(c => c.rarity !== 'LEGENDARY');
+  }
+
+  let choices = [];
+  if (availableCards.length < 3) {
+      choices = availableCards;
+  } else {
+      while (choices.length < 3) {
+          const idx = Math.floor(Math.random() * availableCards.length);
+          const pick = availableCards[idx];
+          if (!choices.some(c => c.id === pick.id)) choices.push(pick);
+      }
+  }
+
+  renderChoiceScreen(choices);
+}
+
+function renderChoiceScreen(choices) {
+  let runeHtml = '';
+  if (selectedHero === '죽음의 기사') {
+      const runes = getCurrentRunes();
+      const slots = [];
+      for(let i=0; i<runes.blood; i++) slots.push('blood');
+      for(let i=0; i<runes.frost; i++) slots.push('frost');
+      for(let i=0; i<runes.unholy; i++) slots.push('unholy');
+      while(slots.length < 3) slots.push('empty');
+      runeHtml = `<div class='rune-container'>${slots.map(t=>`<div class='rune-slot rune-${t}'></div>`).join('')}</div>`;
+  }
+
+  content.innerHTML = `
+      <div class='title'>카드 선택 (${deck.length}/30)</div>
+      ${renderManaCurve()}
+      ${runeHtml}
+      <div class='layout'><div class='card-container' id='cards'></div><div class='deck' id='deck'></div></div>
+      <div style='margin-top:20px;'><div class='btn dev-entry-btn' onclick='authDeveloperMode()'>카드 확인</div></div>
+      `;
+  
+  updateDeck(); 
+  const cardDiv = document.getElementById('cards');
+
+  choices.forEach(card => {
+    const wrapper = document.createElement('div'); wrapper.className = 'card-wrapper';
+    const div = document.createElement('div'); div.className = 'card';
+    div.style.backgroundImage = `url('https://art.hearthstonejson.com/v1/render/latest/koKR/512x/${card.id}.png')`;
+    div.onerror = function() { this.style.backgroundColor = '#ccc'; this.innerText = card.name; };
+    div.onclick = () => { addCardToDeck(card); };
+    const name = document.createElement('div'); name.innerText = card.name; name.style.marginTop = '10px'; name.style.fontSize = '18px'; name.style.fontWeight = 'bold';
+    const isClassCard = card.cardClass === heroClassMap[selectedHero] || (card.classes && card.classes.includes(heroClassMap[selectedHero]));
+    if (isClassCard) name.style.color = '#0070DE'; 
+    wrapper.appendChild(div); wrapper.appendChild(name); cardDiv.appendChild(wrapper);
+  });
+}
+
+function addCardToDeck(card) {
+    const rc = card.runeCost || { blood: 0, frost: 0, unholy: 0 };
+    deck.push({ id: card.id, name: card.name, cost: card.cost, rarity: card.rarity, blood: rc.blood || 0, frost: rc.frost || 0, unholy: rc.unholy || 0, dbfId: card.dbfId });
+    if(deck.length < 30) selectCards(false); else finishDeck();
+}
+
+function finishDeck() {
+    updateDeck(); 
+    const deckDiv = document.getElementById('deck').innerHTML;
+    content.innerHTML = `
+        <div class='title'>덱 완성!</div>
+        <div class='layout'><div class='deck' style='height: auto; max-height: 70vh;'>${deckDiv}</div></div>
+        <div class='btn' onclick='copyDeckList()'>텍스트 복사</div>
+        <div class='btn' onclick='exportDeckCode()'>덱 코드 복사</div>
+        <div class='btn' onclick='mainScreen()'>다시 하기</div>
+    `;
+}
+
+function copyDeckList() {
+    const text = deck.map(c => `[${c.cost}] ${c.name}`).join('\n');
+    navigator.clipboard.writeText(text).then(() => { alert('덱 리스트가 복사되었습니다!'); });
+}
+
+// ------------------------------
+// 덱 코드 인코딩 (Base64 + VarInt)
+// ------------------------------
+function encodeDeckCode() {
+    if (!deck || deck.length === 0) return;
+
+    // 1. 헤더: 0x00, Version(1), Format(1=Wild)
+    const bytes = [0, 1, 1];
+
+    // 2. 영웅: Count(1), DBF ID
+    writeVarInt(bytes, 1);
+    writeVarInt(bytes, heroDbfIdMap[selectedHero] || 7); // 기본 전사
+
+    // 카드 분류 (1장, 2장, n장)
+    const singles = [];
+    const doubles = [];
+    const multis = []; // 투기장/야생이라 n장 가능하지만 현재 로직상 최대 2장
+
+    const cardCounts = {};
+    deck.forEach(c => {
+        const dbf = c.dbfId;
+        cardCounts[dbf] = (cardCounts[dbf] || 0) + 1;
+    });
+
+    for (const [dbfStr, count] of Object.entries(cardCounts)) {
+        const dbf = parseInt(dbfStr);
+        if (count === 1) singles.push(dbf);
+        else if (count === 2) doubles.push(dbf);
+        else multis.push({ id: dbf, count: count });
+    }
+
+    // 정렬 (오름차순)
+    singles.sort((a,b) => a - b);
+    doubles.sort((a,b) => a - b);
+    multis.sort((a,b) => a.id - b.id);
+
+    // 3. 1장짜리
+    writeVarInt(bytes, singles.length);
+    singles.forEach(id => writeVarInt(bytes, id));
+
+    // 4. 2장짜리
+    writeVarInt(bytes, doubles.length);
+    doubles.forEach(id => writeVarInt(bytes, id));
+
+    // 5. n장짜리
+    writeVarInt(bytes, multis.length);
+    multis.forEach(item => {
+        writeVarInt(bytes, item.id);
+        writeVarInt(bytes, item.count);
+    });
+
+    // 6. 사이드보드 (없음)
+    bytes.push(0);
+
+    // Base64 인코딩
+    const base64 = btoa(String.fromCharCode.apply(null, bytes));
+    return base64;
+}
+
+function writeVarInt(bytes, value) {
+    while ((value & 0xFFFFFF80) !== 0) {
+        bytes.push((value & 0x7F) | 0x80);
+        value >>>= 7;
+    }
+    bytes.push(value & 0x7F);
+}
+
+function exportDeckCode() {
+    try {
+        const code = encodeDeckCode();
+        navigator.clipboard.writeText(code).then(() => {
+            alert('덱 코드가 복사되었습니다!\n하스스톤에서 붙여넣기 하세요.');
+        });
+    } catch(e) {
+        console.error(e);
+        alert('덱 코드 생성 중 오류가 발생했습니다.');
+    }
+}
+
+loadCardData();
+</script>
+
+</body>
+</html>
